@@ -1,0 +1,436 @@
+
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>How do we know a neural circuit has been repaired? Explainable AI for epilepsy</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@300;400;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #ffffff; --ink: #000000; --muted: #5f5e58; --panel: #f9f9f6; --line: #e2e0d8; --arrow: #8b887e;
+    --gray-bg: #efece6; --gray-line: #cfcac0; --gray-ink: #1f1f1c;
+    --lav-bg: #ebe9fb; --lav-line: #b9b3ee; --lav-ink: #3a3794;
+    --mint-bg: #ddf4e9; --mint-line: #9bd8c0; --mint-ink: #0e5b45;
+    --peach-bg: #fbeed9; --peach-line: #e5ba78; --peach-ink: #7a4911;
+    --btn-bg: #000; --btn-ink: #fff;
+  }
+  :root[data-theme="dark"] {
+    --bg: #141413; --ink: #f5f3ee; --muted: #a9a79d; --panel: #1e1e1c; --line: #34342f; --arrow: #8b887e;
+    --gray-bg: #2b2b28; --gray-line: #45453f; --gray-ink: #ece9e2;
+    --lav-bg: #26254d; --lav-line: #4b4896; --lav-ink: #d0cefb;
+    --mint-bg: #153d31; --mint-line: #2f7a62; --mint-ink: #bdeed9;
+    --peach-bg: #45300f; --peach-line: #8a6524; --peach-ink: #f6dbab;
+    --btn-bg: #f5f3ee; --btn-ink: #141413;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; scroll-padding-top: env(safe-area-inset-top, 0px); }
+  :root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: "Noto Sans", "Open Sans", Arial, sans-serif; font-size: 18px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+  a { color: inherit; }
+  :focus-visible { outline: 3px solid var(--lav-line); outline-offset: 3px; }
+  .page { max-width: 1280px; margin: 0 auto; padding: 0 40px 60px; }
+
+  .top { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 18px 0 0; font-size: 15px; color: var(--muted); }
+  .top .tools { display: flex; align-items: center; gap: 18px; }
+  .textlink { color: var(--muted); text-decoration: none; font-size: 15px; }
+  .textlink:hover { color: var(--ink); text-decoration: underline; }
+  .toggle { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; padding: 0; color: var(--ink); background: transparent; border: 1px solid var(--line); border-radius: 50%; cursor: pointer; }
+  .toggle:hover { border-color: var(--arrow); }
+  :root[data-theme="dark"] .toggle .i-moon { display: none; }
+  :root:not([data-theme="dark"]) .toggle .i-sun { display: none; }
+  .btn { display: inline-block; font-family: inherit; font-weight: 700; font-size: 16px; padding: 11px 20px; border-radius: 4px; text-decoration: none; cursor: pointer; background: var(--btn-bg); color: var(--btn-ink); border: 2px solid var(--btn-bg); }
+  .btn:hover { opacity: .85; }
+  .btn.ghost { background: transparent; color: var(--ink); border-color: var(--line); }
+
+  h1 { font-size: clamp(38px, 6.6vw, 86px); line-height: 1.08; letter-spacing: -0.02em; font-weight: 800; margin: 28px 0 34px; max-width: 14em; }
+  .intro { font-size: clamp(19px, 2vw, 26px); line-height: 1.4; margin: 0 0 22px; max-width: 46em; }
+  .cta { display: flex; flex-wrap: wrap; gap: 10px; margin: 8px 0 40px; }
+
+  .canvas { display: grid; grid-template-columns: minmax(0, 1.08fr) 68px minmax(0, .92fr); column-gap: 6px; grid-template-areas: "p1 a1 t1" "L a2 R"; }
+  .p1 { grid-area: p1; } .a1 { grid-area: a1; } .t1 { grid-area: t1; }
+  .L { grid-area: L; } .a2 { grid-area: a2; } .R { grid-area: R; }
+  .a1 { align-self: center; } .a2 { align-self: start; margin-top: 150px; }
+  .big-arrow { width: 60px; height: 30px; display: block; color: var(--ink); margin: 0 auto; }
+
+  .numbered { display: grid; grid-template-columns: 36px minmax(0, 1fr); align-items: start; }
+  .numbered .n { font-size: 30px; font-weight: 300; line-height: 1.1; padding-top: 14px; }
+  .panel { background: var(--panel); padding: 20px 22px; font-family: "Inter", Arial, sans-serif; overflow-x: auto; }
+  .panel + .panel { border-top: 1px solid var(--line); }
+  .plabel { font-size: 14px; font-weight: 600; margin: 0 0 16px; }
+  .cap { font-family: "Inter", Arial, sans-serif; font-size: 12px; color: var(--muted); text-align: center; margin: 14px 0 0; }
+
+  .card { border: 1px solid; border-radius: 6px; padding: 9px 12px; text-align: center; font-family: "Inter", Arial, sans-serif; font-size: 14px; font-weight: 500; line-height: 1.25; }
+  .card small { display: block; font-size: 12px; font-weight: 400; margin-top: 3px; opacity: .85; }
+  .gray { background: var(--gray-bg); border-color: var(--gray-line); color: var(--gray-ink); }
+  .lav { background: var(--lav-bg); border-color: var(--lav-line); color: var(--lav-ink); }
+  .mint { background: var(--mint-bg); border-color: var(--mint-line); color: var(--mint-ink); }
+  .peach { background: var(--peach-bg); border-color: var(--peach-line); color: var(--peach-ink); }
+  .dashed { border-style: dashed; }
+
+  .chain { display: flex; align-items: center; gap: 6px; min-width: 470px; }
+  .chain .card { flex: 1 1 0; }
+  .chain .sm-arrow { color: var(--arrow); font-size: 15px; flex: 0 0 auto; }
+  .repair { margin: 8px 0 40px; }
+
+  .fan { display: grid; grid-template-columns: 104px 44px 128px 22px 128px; align-items: center; min-width: 440px; }
+  .fan .col { display: flex; flex-direction: column; gap: 12px; }
+  .fan .col .card { height: 58px; display: flex; flex-direction: column; justify-content: center; padding: 4px 8px; }
+  .fan .arrs { display: flex; flex-direction: column; gap: 12px; }
+  .fan .arrs span { height: 58px; display: flex; align-items: center; justify-content: center; color: var(--arrow); font-size: 15px; }
+  .fan svg { width: 44px; height: 198px; display: block; }
+  .fan svg path { fill: none; stroke: var(--arrow); stroke-width: 1.4; }
+  .fan svg marker path { fill: var(--arrow); stroke: none; }
+
+  .vstack { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .vstack > .card { width: 100%; }
+  .v-arrow { color: var(--arrow); font-size: 18px; line-height: 1; font-family: "Inter", Arial, sans-serif; }
+  .container { width: 100%; border: 1px solid var(--lav-line); background: var(--lav-bg); border-radius: 8px; padding: 12px; }
+  .container > .title { font-family: "Inter", Arial, sans-serif; font-size: 14px; font-weight: 600; color: var(--lav-ink); text-align: center; margin-bottom: 10px; }
+  .container .inner { display: flex; flex-direction: column; gap: 7px; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; }
+
+  .center { text-align: center; margin: 22px auto; max-width: 30em; }
+  .note { text-align: center; margin: 0 auto 20px; max-width: 26em; }
+  .list-title { text-align: center; margin: 22px auto 10px; max-width: 30em; }
+  ol.steps { margin: 0 0 22px; padding-left: 1.4em; }
+  ol.steps li { margin: 0 0 6px; padding-left: .2em; }
+  .callout { margin: 0 auto 30px; max-width: 26em; }
+  .callout .c-title { text-align: center; margin: 0 0 8px; }
+  .callout ul { margin: 0; padding-left: 1.25em; }
+  .callout li { margin: 0 0 7px; }
+  .problems { margin: 0 auto; max-width: 25em; }
+  .problems p { text-align: center; margin: 0 0 14px; }
+  .problems ul { margin: 0; padding-left: 1.25em; }
+  .problems li { margin: 0 0 6px; }
+  .t1 { align-self: center; padding: 8px 8px 8px 12px; }
+
+  .bars { display: grid; gap: 11px; font-family: "Inter", Arial, sans-serif; }
+  .bar { display: grid; grid-template-columns: 150px minmax(0, 1fr) 42px; align-items: center; gap: 10px; font-size: 13px; min-width: 380px; }
+  .bar .track { height: 20px; }
+  .bar .fill { height: 100%; background: var(--peach-bg); border: 1px solid var(--peach-line); border-radius: 3px; }
+  .bar .v { color: var(--muted); text-align: right; font-size: 12px; }
+
+  /* support section */
+  .support { margin-top: 64px; scroll-margin-top: 24px; }
+  .support h2 { font-size: clamp(28px, 4vw, 48px); line-height: 1.12; letter-spacing: -0.02em; font-weight: 800; margin: 0 0 16px; max-width: 16em; }
+  .support .lede { font-size: clamp(18px, 1.7vw, 22px); line-height: 1.45; margin: 0 0 28px; max-width: 42em; }
+  .fund { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr); gap: 24px; align-items: start; }
+  .total { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; margin: 0 0 18px; }
+  .total .amt { font-size: clamp(30px, 4vw, 44px); font-weight: 800; letter-spacing: -0.02em; }
+  .total .per { font-size: 14px; color: var(--muted); }
+  .split { display: flex; height: 26px; border-radius: 6px; overflow: hidden; border: 1px solid var(--line); margin: 0 0 22px; }
+  .split span { display: block; height: 100%; }
+  .s1 { background: var(--lav-line); } .s2 { background: var(--mint-line); } .s3 { background: var(--gray-line); } .s4 { background: var(--peach-line); }
+  .lines { display: grid; gap: 12px; }
+  .line { display: grid; grid-template-columns: 14px minmax(0, 1fr) auto; gap: 12px; align-items: start; padding: 14px 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
+  .dot { width: 12px; height: 12px; border-radius: 50%; margin-top: 5px; }
+  .line b { font-size: 15px; font-weight: 600; display: block; }
+  .line p { margin: 4px 0 0; font-size: 13px; line-height: 1.45; color: var(--muted); }
+  .line .price { font-size: 15px; font-weight: 600; white-space: nowrap; }
+  .go { display: grid; gap: 12px; }
+  .go .card { text-align: left; padding: 14px 16px; }
+  .go .card b { font-weight: 600; }
+  .support .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 26px; }
+
+  footer { margin-top: 56px; padding-top: 24px; border-top: 1px solid var(--line); font-size: 15px; color: var(--muted); text-align: center; }
+  footer p { margin: 0 0 6px; }
+
+  @media (max-width: 900px) {
+    .page { padding: 0 20px 48px; }
+    .canvas { grid-template-columns: minmax(0, 1fr); grid-template-areas: "p1" "a1" "t1" "L" "R"; }
+    .a2 { display: none; }
+    .a1 { margin: 14px 0; }
+    .big-arrow { transform: rotate(90deg); }
+    .t1 { padding: 0; }
+    .numbered { grid-template-columns: 28px minmax(0, 1fr); }
+    .panel { padding: 16px; }
+    .top .who { display: none; }
+    .top { justify-content: flex-end; }
+    .fund { grid-template-columns: minmax(0, 1fr); }
+  }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="top">
+    <span class="who">Neural circuit repair · epilepsy</span>
+    <div class="tools">
+      <a class="textlink" id="support-top" href="#support">Support</a>
+      <button class="toggle" id="theme-toggle" type="button" aria-label="Toggle light and dark theme" aria-pressed="false" title="Toggle theme">
+        <svg class="i-moon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+        <svg class="i-sun" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <h1>How do we know a neural circuit has been repaired?</h1>
+
+  <p class="intro">Your brain runs on two kinds of signals: neurons that say <b>"go"</b> (excitation) and neurons that say <b>"stop"</b> (inhibition). A seizure happens when "go" overwhelms "stop", like a car with a strong accelerator and weak brakes.</p>
+  <p class="intro">In <b>drug-resistant epilepsy</b> (about 30% of people with epilepsy), medication doesn't fix this. One promising therapy transplants new inhibitory neurons, called <b>GABAergic interneurons</b>, into the circuit to act as fresh brakes and restore the balance. It has reached early first-in-human trials.</p>
+  <p class="intro">Here's the catch: a transplanted cell only helps if it actually <b>plugs into the circuit and connects to the right neurons</b>. We can't watch that happen inside a living brain. All we have is noisy, indirect data: EEG, brain imaging and molecular markers.</p>
+  <p class="intro"><b>The question I'm trying to resolve:</b> did the transplanted cells integrate and form the right connections? To answer it, I model the circuit as a <b>graph</b> (cells are dots, connections are lines) and train a Graph Neural Network to read the data. The model has to show its reasoning, so the answer can be checked, not just believed.</p>
+
+  <div class="panel repair">
+    <p class="plabel">The circuit repair</p>
+    <div class="chain">
+      <div class="card gray">Unbalanced circuit<small>too much excitation · seizures</small></div><span class="sm-arrow">→</span>
+      <div class="card lav">Transplant<small>GABAergic inhibitory neurons</small></div><span class="sm-arrow">→</span>
+      <div class="card mint">Integration?<small>do new cells connect to the right partners</small></div><span class="sm-arrow">→</span>
+      <div class="card mint">Balance restored?<small>excitation and inhibition rebalanced</small></div>
+    </div>
+    <p class="cap">the hard part is knowing whether step 3 actually happened</p>
+  </div>
+
+  <p class="intro">How do we read out whether the repair worked? 2 ways</p>
+
+  <div class="cta">
+    <a class="btn" href="https://humancyyborg.github.io/port-files/publications/03_neural_circuit_mapping.pdf" target="_blank" rel="noopener">Read the full paper</a>
+  </div>
+
+  <div class="canvas">
+
+    <div class="p1 numbered">
+      <div class="n">1.</div>
+      <div class="panel">
+        <p class="plabel">Black-box GNN, explained afterwards</p>
+        <div class="chain">
+          <div class="card gray">EEG · imaging · molecular</div><span class="sm-arrow">→</span>
+          <div class="card gray">GNN</div><span class="sm-arrow">→</span>
+          <div class="card gray">Integrated?</div><span class="sm-arrow">→</span>
+          <div class="card peach dashed">Explanation</div>
+        </div>
+        <p class="cap">explanation is a separate step · may not match what the model did</p>
+      </div>
+    </div>
+
+    <div class="a1"><svg class="big-arrow" viewBox="0 0 60 30" aria-hidden="true"><path d="M0 11h38V1l22 14-22 14V19H0z" fill="currentColor"/></svg></div>
+
+    <div class="t1">
+      <p class="note">Regular clinical AI (GNNs, deep networks etc.) would predict whether the circuit was repaired first, and get explained afterwards</p>
+      <div class="problems">
+        <p><b>Problems</b>:</p>
+        <ul>
+          <li>opaque (a clinician can't question the prediction)</li>
+          <li>brittle (the explanation might not reflect the model's real reasoning)</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="L">
+      <div class="numbered">
+        <div class="n">2.</div>
+        <div>
+          <div class="panel">
+            <p class="plabel">Explainable by design (this project)</p>
+            <div class="fan">
+              <div class="col"><div class="card lav">Circuit graph<small>cells + connections</small></div></div>
+              <svg viewBox="0 0 44 198" aria-hidden="true">
+                <defs><marker id="ah" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0 0L6 3L0 6z"/></marker></defs>
+                <path d="M0 99 C 20 99, 22 29, 42 29" marker-end="url(#ah)"/>
+                <path d="M0 99 H42" marker-end="url(#ah)"/>
+                <path d="M0 99 C 20 99, 22 169, 42 169" marker-end="url(#ah)"/>
+              </svg>
+              <div class="col">
+                <div class="card lav">attention weights<small>which connections</small></div>
+                <div class="card lav">gradient saliency<small>which inputs</small></div>
+                <div class="card lav">concept scores<small>which biology</small></div>
+              </div>
+              <div class="arrs"><span>→</span><span>→</span><span>→</span></div>
+              <div class="col">
+                <div class="card peach">ranked connections</div>
+                <div class="card peach">ranked signals</div>
+                <div class="card peach">named concepts</div>
+              </div>
+            </div>
+            <p class="cap">1 model · prediction and reasoning come out together · reasoning is then tested</p>
+          </div>
+        </div>
+      </div>
+
+      <p class="center"><b>Solution</b>: model the circuit as a graph and build the explanation methods into the GNN itself, so every prediction comes with its own reasoning (attention, saliency, concepts), then test whether that reasoning matches known circuit biology</p>
+
+      <p class="center">Comparing the model's reasoning with known biology is called the <b>"validation"</b> phase (the crux of the project: an explanation that looks right but is wrong is worse than an honest black box)</p>
+
+      <p class="list-title">Next, for each prediction, we:</p>
+      <ol class="steps">
+        <li>train the GNN on open epilepsy datasets (OpenNeuro IDEAS, EBRAINS)</li>
+        <li>record attention weights, saliency maps and concept scores</li>
+        <li>list what known biology says the model should attend to, e.g. GABAergic inhibitory connections when predicting excitatory/inhibitory rebalancing</li>
+        <li>compare the model's stated reasoning with that list</li>
+        <li>if they match => the model is right for the right reasons</li>
+        <li>if not => the model is picking up spurious correlations, and we flag it</li>
+        <li>publish the pipeline, model and validation method openly</li>
+      </ol>
+
+      <div class="numbered" style="grid-template-columns: 0 minmax(0,1fr);">
+        <span></span>
+        <div class="panel">
+          <div class="chain" style="margin-bottom:22px;">
+            <div class="card lav">Attention record<small>per prediction</small></div><span class="sm-arrow">→</span>
+            <div class="card mint">Compare<small>with known biology</small></div><span class="sm-arrow">→</span>
+            <div class="card mint">Verdict<small>trust or flag</small></div>
+          </div>
+          <p class="plabel">Attention by edge type (illustrative, not results)</p>
+          <div class="bars" role="img" aria-label="Illustrative example only: attention concentrated on GABAergic inhibitory connections">
+            <div class="bar"><span>GABAergic inhibitory</span><div class="track"><div class="fill" style="width:71%"></div></div><span class="v">0.71</span></div>
+            <div class="bar"><span>Excitatory</span><div class="track"><div class="fill" style="width:16%"></div></div><span class="v">0.16</span></div>
+            <div class="bar"><span>Non-synaptic</span><div class="track"><div class="fill" style="width:9%"></div></div><span class="v">0.09</span></div>
+            <div class="bar"><span>Spurious features</span><div class="track"><div class="fill" style="width:4%"></div></div><span class="v">0.04</span></div>
+          </div>
+          <p class="cap">made-up numbers to show what a correct result would look like</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="a2"><svg class="big-arrow" viewBox="0 0 60 30" aria-hidden="true"><path d="M0 11h38V1l22 14-22 14V19H0z" fill="currentColor"/></svg></div>
+
+    <div class="R">
+      <p class="note">In more detail (for example, let's say the model reads one patient's multimodal data over time)</p>
+      <div class="panel" style="padding:24px;">
+        <div class="vstack">
+          <div class="card gray">Multimodal patient data<small>EEG · imaging · molecular markers</small></div>
+          <span class="v-arrow">↓</span>
+          <div class="container">
+            <div class="title">Dynamic, heterogeneous GNN</div>
+            <div class="inner">
+              <div class="card mint">Nodes<small>neurons, interneuron types, transplanted cells</small></div>
+              <div class="card mint">Edges<small>excitatory, GABAergic inhibitory, other</small></div>
+              <div class="card mint">Layers 1 … N<small>message passing + attention</small></div>
+              <div class="card mint">Readout<small>composite score</small></div>
+            </div>
+          </div>
+          <p class="cap" style="margin:6px 0 2px;">every layer records its attention and gradients</p>
+          <span class="v-arrow">↓</span>
+          <div class="row2">
+            <div class="card lav">Explanation record<small>attention · saliency · concepts</small></div>
+            <div class="card peach">Integration Success Score<small>electrophysiological + structural + molecular</small></div>
+          </div>
+          <span class="v-arrow">↓</span>
+          <div class="card mint">Checked against known biology<small>does attention track GABAergic connections?</small></div>
+        </div>
+      </div>
+
+      <div style="height:34px"></div>
+
+      <div class="callout">
+        <p class="c-title">Benefits:</p>
+        <ul>
+          <li>a readout of whether the circuit repaired, with reasons a clinician can question</li>
+          <li>a wrong explanation gets caught, not hidden</li>
+          <li>open pipeline, reusable for other high-stakes graph-based clinical AI</li>
+        </ul>
+      </div>
+
+      <div class="callout">
+        <p class="c-title">Why epilepsy:</p>
+        <ul>
+          <li>about 30% of the 50 million people with epilepsy don't respond to drugs</li>
+          <li>inhibitory interneuron transplants, which aim to restore the excitatory/inhibitory balance, have reached first-in-human trials</li>
+          <li>the open problem: did the transplanted cells integrate and connect correctly?</li>
+        </ul>
+      </div>
+
+      <div class="callout">
+        <p class="c-title">Risks:</p>
+        <ul>
+          <li>scarce data (open datasets weren't built for stem-cell integration, so validation may use proxy or synthetic data)</li>
+          <li>the validation may return an ambiguous or negative result, which is still a useful, publishable answer</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Support -->
+  <section class="support" id="support" aria-labelledby="support-h">
+    <h2 id="support-h">What support makes possible</h2>
+    <p class="lede">This is a solo project, so the cost is simple: compute to train and test the models, and time to do the work carefully. The plan is <b>6 months</b> and an estimated <b>$20,000–$35,000</b> in total. Everything produced is released openly.</p>
+
+    <div class="fund">
+      <div class="panel">
+        <div class="total">
+          <span class="amt">$20k–$35k</span>
+          <span class="per">estimated total · 6 months</span>
+        </div>
+        <div class="split" role="img" aria-label="Rough split of the budget: runway about half, compute about a third, then publication and data access">
+          <span class="s2" style="width:53%"></span>
+          <span class="s1" style="width:35%"></span>
+          <span class="s4" style="width:7%"></span>
+          <span class="s3" style="width:5%"></span>
+        </div>
+        <div class="lines">
+          <div class="line">
+            <span class="dot s1"></span>
+            <div><b>Compute</b><p>GPU and cloud costs for training dynamic, heterogeneous GNNs across several architecture variants and interpretability setups. Far heavier than standard ML workloads.</p></div>
+            <span class="price">$8k–$12k</span>
+          </div>
+          <div class="line">
+            <span class="dot s2"></span>
+            <div><b>Researcher runway</b><p>Six months of focused time for a solo researcher, part-time to full-time equivalent.</p></div>
+            <span class="price">$12k–$18k</span>
+          </div>
+          <div class="line">
+            <span class="dot s3"></span>
+            <div><b>Data access</b><p>Most datasets (OpenNeuro, EBRAINS) are open. This covers restricted-access requests and preprocessing tools.</p></div>
+            <span class="price">$1k–$2k</span>
+          </div>
+          <div class="line">
+            <span class="dot s4"></span>
+            <div><b>Publication and sharing</b><p>Open-source release, preprint and journal fees, and documentation others can build on.</p></div>
+            <span class="price">$1.5k–$2.5k</span>
+          </div>
+        </div>
+        <p class="cap">estimates, shown as ranges · the bar shows the rough split at range midpoints</p>
+      </div>
+
+      <div class="go">
+        <p class="plabel" style="margin:0;">What you'd be helping produce</p>
+        <div class="card lav" style="text-align:left"><b>A trained, explainable GNN</b><small>attention, saliency and concept scores built in</small></div>
+        <div class="card mint" style="text-align:left"><b>A validation result</b><small>does the model's reasoning match known circuit biology? A negative answer is still publishable</small></div>
+        <div class="card peach" style="text-align:left"><b>An open pipeline</b><small>code, model and method, reusable for other high-stakes clinical graph AI</small></div>
+        <div class="actions">
+          <a class="btn" id="support-cta" href="#support-note">Support the work</a>
+          <a class="btn ghost" href="https://humancyyborg.github.io/port-files/publications/03_neural_circuit_mapping.pdf" target="_blank" rel="noopener">Read the paper first</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <p>A solo research project building on the <a href="https://humancyyborg.github.io/port-files/publications/03_neural_circuit_mapping.pdf" target="_blank" rel="noopener">neural circuit mapping paper</a>.</p>
+    <p id="support-note">If you'd like to help it along, you can <a id="support-link" href="#support-note">support the work</a>.</p>
+  </footer>
+</div>
+
+<script>
+  // Put your support link here (donation page, form, or "mailto:you@example.com").
+  var SUPPORT_URL = "https://buy.stripe.com/28E5kD4yk1vd4CX3bq00002";
+  ["support-cta", "support-link"].forEach(function (id) {
+    var el = document.getElementById(id);
+    if (el && SUPPORT_URL) {
+      el.setAttribute("href", SUPPORT_URL);
+      if (/^https?:/.test(SUPPORT_URL)) { el.setAttribute("target", "_blank"); el.setAttribute("rel", "noopener"); }
+    }
+  });
+
+  (function () {
+    var root = document.documentElement, t = document.getElementById("theme-toggle");
+    function apply(mode) {
+      root.setAttribute("data-theme", mode);
+      t.setAttribute("aria-pressed", mode === "dark" ? "true" : "false");
+    }
+    var saved = null;
+    try { saved = localStorage.getItem("theme"); } catch (e) {}
+    apply(saved === "dark" ? "dark" : "light");
+    t.addEventListener("click", function () {
+      var next = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
+      apply(next);
+      try { localStorage.setItem("theme", next); } catch (e) {}
+    });
+  })();
+</script>
+</body>
+</html>
